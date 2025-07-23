@@ -403,5 +403,173 @@ Let me know if you want to:
 * Export everything to one HTML or JSON report
 
 I can expand the script for you.
+Here are **realistic example JavaScript snippets** and **what to look for** in them when doing bug bounty recon or JS analysis:
+
+---
+
+## 🔍 Example 1: API Endpoints & Parameters
+
+```javascript
+fetch("/api/user/details?id=12345", {
+  method: "GET",
+  headers: {
+    "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "Content-Type": "application/json"
+  }
+});
+```
+
+### 🔎 What to Look For:
+
+* `GET /api/user/details?id=...` → Possible **IDOR**, **user enumeration**, **sensitive data leak**
+* `Authorization: Bearer ...` → Token format → test for **JWT flaws**
+* Try `id=1`, `id=2`, `id=admin` → **Parameter fuzzing**
+
+---
+
+## 🔍 Example 2: Internal Admin Panel or Hidden Route
+
+```javascript
+if (user.isAdmin) {
+  window.location.href = "/admin/dashboard";
+}
+```
+
+### 🔎 What to Look For:
+
+* `/admin/dashboard` → Not linked in UI → test access directly
+* Check response from `/admin/` as low-privileged user
+* Try brute-forcing `/admin/*`
+
+---
+
+## 🔍 Example 3: Dynamic API Key in Code
+
+```javascript
+const stripe = Stripe("pk_test_51MtXc6L1QnSO3tUvd3spPv...");
+```
+
+### 🔎 What to Look For:
+
+* `pk_test_...` → **Public key**, limited use
+* If you find `sk_test_...` → **Critical**, private key exposed
+* Report **leaked API keys** or tokens
+
+---
+
+## 🔍 Example 4: Sensitive Info or Debug Messages
+
+```javascript
+console.log("Logged in as admin");
+console.log("Connecting to db-prod.internal.example.com");
+```
+
+### 🔎 What to Look For:
+
+* **Hardcoded internal hostnames**
+* **Debug output** → may lead to infrastructure leaks
+* URLs, paths, credentials
+
+---
+
+## 🔍 Example 5: CSRF/Token in URL
+
+```javascript
+const logoutUrl = "/logout?token=ABCD1234XYZ";
+```
+
+### 🔎 What to Look For:
+
+* Tokens in **GET parameters** → often **leakable**
+* Try reusing token for CSRF or token reuse bugs
+
+---
+
+## 🔍 Example 6: Feature Flags or Hidden UI
+
+```javascript
+if (window.location.href.includes("beta")) {
+  loadBetaFeatures();
+}
+```
+
+### 🔎 What to Look For:
+
+* Try visiting `/dashboard?beta=true` or `?debug=true`
+* Access **hidden or untested features**
+
+---
+
+## 🔍 Example 7: Auth Bypass via Role Check
+
+```javascript
+if (user.role !== 'admin') {
+  alert("Access denied");
+}
+```
+
+### 🔎 What to Look For:
+
+* **Client-side only** check = insecure
+* Try forcing `/admin` or **tampering cookie/session**
+
+---
+
+## 🔍 Example 8: Unused or Forgotten Endpoints
+
+```javascript
+const endpoints = {
+  login: "/api/login",
+  register: "/api/register",
+  legacyAuth: "/api/old_auth",
+  uploadCV: "/api/resume/upload"
+};
+```
+
+### 🔎 What to Look For:
+
+* `/api/old_auth` → **Legacy, forgotten route**
+* `/api/resume/upload` → Test for **file upload**, content-type bypass, RCE
+
+---
+
+## 🔍 Example 9: Third-Party Key Exposure
+
+```javascript
+const mapboxToken = "pk.eyJ1IjoibWFwYm94IiwiYSI6ImNrbX...";
+```
+
+### 🔎 What to Look For:
+
+* Google Maps, Mapbox, Firebase keys → test if **misconfigured** (e.g., wide permissions)
+* Check if you can abuse them via the service’s API
+
+---
+
+## 📌 Tips for Hunting in JS Files
+
+| 🔧 Look For                                            | 🧪 Why It’s Important                 |
+| ------------------------------------------------------ | ------------------------------------- |
+| `fetch()`, `axios()`, `XMLHttpRequest()`               | Find hidden **API calls**, **params** |
+| `localStorage.setItem("token", ...)`                   | Check for **token exposure**          |
+| `.env`, `apikey`, `token`, `secret`, `client_id`       | Sensitive **keys or tokens**          |
+| `eval()`, `document.write()`                           | Possible **XSS sink**                 |
+| `debug=true`, `admin=true`, `beta=`                    | Feature toggles, **logic bypass**     |
+| URLs to `/internal`, `/debug`, `/admin`, `/api/v1/old` | Hidden routes                         |
+
+---
+
+## ✅ Tools to Help With Analysis
+
+* **Burp Suite** → Intercept JS loading and responses
+* **LinkFinder** → Pull out endpoint URLs
+* **SecretFinder** → Detect hardcoded secrets
+* **Browser DevTools (F12)** → Manual JS file review
+* **grep**, **jq**, **cat**, etc. → Command-line search
+
+---
+
+Would you like a downloadable JS analysis checklist or a script that downloads all JS files for offline grep'ing?
+
 
 
