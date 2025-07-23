@@ -141,3 +141,163 @@ Would you like:
 * A checklist for each bounty target?
 
 Let me know — happy to provide more resources.
+Enumerating **JavaScript (JS) files** and **hidden parameters** is crucial in bug bounty hunting — especially for discovering hidden APIs, sensitive endpoints, and parameters that can lead to XSS, IDOR, auth bypass, etc.
+
+Here’s how you can do that **step-by-step** using tools + manual tricks.
+
+---
+
+## 🎯 1. **Find JavaScript Files (JS Enumeration)**
+
+### ✅ From URLs:
+
+```bash
+waybackurls target.com | grep "\.js$"
+gau target.com | grep "\.js$"
+```
+
+### ✅ With `hakrawler`:
+
+```bash
+hakrawler -url https://target.com -js -depth 2
+```
+
+### ✅ With `subjs` (extract JS from subdomains):
+
+```bash
+subjs -i live.txt -o jsfiles.txt
+```
+
+---
+
+## 📥 2. **Download & Inspect JS Files**
+
+Use `wget`, `curl`, or `getjs` to grab JS files for analysis:
+
+```bash
+wget https://target.com/assets/app.js
+```
+
+Now search for:
+
+* Endpoints (`/api/user`, `/admin`)
+* Secrets or keys
+* Parameters
+* Hidden functions
+
+### 🔍 Grep useful things:
+
+```bash
+cat app.js | grep -E "fetch|axios|XMLHttpRequest|token|auth|api|key|client_id"
+```
+
+---
+
+## 🧰 Tools to Extract Info from JS Files
+
+### ✅ **LinkFinder** (Find endpoints in JS)
+
+```bash
+git clone https://github.com/GerbenJavado/LinkFinder.git
+cd LinkFinder
+python3 linkfinder.py -i https://target.com/assets/app.js -o cli
+```
+
+### ✅ **JSParser** (Extract endpoints & URLs)
+
+```bash
+git clone https://github.com/nahamsec/JSParser.git
+cd JSParser
+python3 parser.py --url https://target.com/script.js
+```
+
+### ✅ **SecretFinder** (Find API keys/secrets in JS)
+
+```bash
+git clone https://github.com/m4ll0k/SecretFinder.git
+cd SecretFinder
+python3 SecretFinder.py -i https://target.com/app.js -o cli
+```
+
+---
+
+## 🧪 3. **Enumerate Hidden Parameters**
+
+These parameters may not show up in the UI but are used internally via JS or backend.
+
+### ✅ Use `ParamSpider`:
+
+```bash
+git clone https://github.com/devanshbatham/ParamSpider
+cd ParamSpider
+python3 paramspider.py -d target.com -o output
+```
+
+### ✅ Use `GF` + `waybackurls`:
+
+```bash
+waybackurls target.com | gf xss
+waybackurls target.com | gf sqli
+```
+
+You can also extract all parameters:
+
+```bash
+waybackurls target.com | grep '?'
+```
+
+---
+
+## 🧠 4. **Manually Inspect in DevTools**
+
+1. Open browser → F12 → Network tab
+2. Reload page and watch JS & XHR requests
+3. Inspect JS files and look for:
+
+   * Functions
+   * API calls
+   * Dynamic parameter names (e.g., `user_id`, `auth_token`)
+   * Source maps (`.map` files)
+
+---
+
+## 📦 Bonus: Automation Script Example
+
+```bash
+#!/bin/bash
+domain=$1
+
+echo "[*] Getting JS files from $domain ..."
+gau $domain | grep "\.js$" | tee jsurls.txt
+
+echo "[*] Finding endpoints in JS files ..."
+for js in $(cat jsurls.txt); do
+    python3 linkfinder.py -i $js -o cli
+done
+
+echo "[*] Extracting hidden parameters ..."
+paramspider -d $domain -o output
+```
+
+---
+
+## ✅ Summary
+
+| Task                   | Tool/Method                                |
+| ---------------------- | ------------------------------------------ |
+| Get JS URLs            | `gau`, `waybackurls`, `hakrawler`, `subjs` |
+| Extract endpoints      | `LinkFinder`, `JSParser`                   |
+| Find secrets/tokens    | `SecretFinder`                             |
+| Find hidden parameters | `ParamSpider`, `GF`, manual JS review      |
+| Manual inspection      | Browser DevTools (Network + Sources tab)   |
+
+---
+
+Would you like:
+
+* A Bash script to automate all of this?
+* Example JS files and what to look for?
+* Training labs to practice JS analysis?
+
+Let me know how deep you want to go.
+
