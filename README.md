@@ -300,4 +300,108 @@ Would you like:
 * Training labs to practice JS analysis?
 
 Let me know how deep you want to go.
+Here’s a **Bash script** that automates the full process of:
+
+* Getting JS files
+* Extracting endpoints and secrets
+* Enumerating hidden parameters
+
+Perfect for **bug bounty recon** or red teaming.
+
+---
+
+### ✅ **Automated JS Recon & Param Enumeration Script**
+
+```bash
+#!/bin/bash
+
+# === CONFIG ===
+domain=$1
+outdir="recon-${domain}"
+mkdir -p "$outdir"
+
+echo "[*] Starting JS & Parameter Enumeration for: $domain"
+sleep 1
+
+# === Step 1: JS File Collection ===
+echo "[*] Collecting JavaScript file URLs..."
+gau $domain | grep '\.js$' | sort -u > $outdir/js_urls.txt
+waybackurls $domain | grep '\.js$' | sort -u >> $outdir/js_urls.txt
+subjs -i <(echo $domain) >> $outdir/js_urls.txt
+sort -u $outdir/js_urls.txt -o $outdir/js_urls.txt
+
+echo "[+] Found $(wc -l < $outdir/js_urls.txt) unique JS files."
+
+# === Step 2: Extract Endpoints from JS ===
+echo "[*] Extracting endpoints from JS files using LinkFinder..."
+mkdir -p "$outdir/endpoints"
+while read -r jsurl; do
+    filename=$(echo $jsurl | sed 's/[^a-zA-Z0-9]/_/g')
+    python3 linkfinder.py -i "$jsurl" -o cli > "$outdir/endpoints/$filename.txt"
+done < "$outdir/js_urls.txt"
+
+# === Step 3: Extract Secrets from JS ===
+echo "[*] Searching for secrets in JS using SecretFinder..."
+mkdir -p "$outdir/secrets"
+while read -r jsurl; do
+    filename=$(echo $jsurl | sed 's/[^a-zA-Z0-9]/_/g')
+    python3 SecretFinder.py -i "$jsurl" -o cli > "$outdir/secrets/$filename.txt"
+done < "$outdir/js_urls.txt"
+
+# === Step 4: Parameter Enumeration ===
+echo "[*] Extracting parameters using ParamSpider..."
+paramspider -d $domain -o "$outdir/paramspider.txt" --exclude woff,ttf,svg,eot,png,jpg
+
+# === Step 5: Extra: Arjun Test on Found URLs (Optional) ===
+echo "[*] Optional: Use Arjun manually to test dynamic pages."
+
+echo "🎯 Recon complete. Output saved in: $outdir/"
+```
+
+---
+
+### 📦 Requirements (install if not done):
+
+```bash
+# Gau
+go install github.com/lc/gau@latest
+
+# Waybackurls
+go install github.com/tomnomnom/waybackurls@latest
+
+# Subjs
+go install github.com/lc/subjs@latest
+
+# LinkFinder
+git clone https://github.com/GerbenJavado/LinkFinder.git
+cd LinkFinder && pip install -r requirements.txt
+
+# SecretFinder
+git clone https://github.com/m4ll0k/SecretFinder.git
+cd SecretFinder && pip install -r requirements.txt
+
+# ParamSpider
+git clone https://github.com/devanshbatham/paramspider.git
+cd paramspider && pip install -r requirements.txt
+```
+
+---
+
+### ✅ Usage:
+
+```bash
+chmod +x js_enum.sh
+./js_enum.sh target.com
+```
+
+---
+
+Let me know if you want to:
+
+* Add `Arjun` automation
+* Save all JS files locally
+* Export everything to one HTML or JSON report
+
+I can expand the script for you.
+
 
